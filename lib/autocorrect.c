@@ -21,7 +21,6 @@
 /**
  * TODO:
  * 1. Consider words with frequency > 1 and Edit Distance = 2.
- * 2. Add text from files checked by user into word data. Process and update word frequency file.
  *
  */
 
