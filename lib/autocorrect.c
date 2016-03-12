@@ -3,14 +3,14 @@
  *
  * Implementation of autocorrect library functionalities
  * Based on a probabilistic model for word correction
- * 
+ *
  * AUTOCORR_check_word - check frequency of word in trie
  * AUTOCORR_upload - add words and frequencies to trie
  * AUTOCORR_correct_word - give correct spelling of misspelled word
  * AUTOCORR_size_data - give number of unique words in word frequency data
  * AUTOCORR_unload_words - unload word hash table to free memory
  * unload_rec - recursively unloads trie from memory
- * 
+ *
  * Based on probability theory from http://norvig.com/spell-correct.html
  *
  * Copyright (C)   2016    Madhav Datt
@@ -40,9 +40,9 @@
 typedef struct node
 {
     int frequency;
-    
+
     // 0-25 for lowercase a-z, 26 for apostrophe (')
-    struct node* next[27]; 
+    struct node* next[27];
 } node;
 
 // For number of unique words stored in the word frequency data loaded
@@ -51,6 +51,11 @@ static int number_dict_words = 0;
 
 // Initialize trie to hold word data and frequencies in memory
 node* word_freq = NULL;
+
+
+// Forward declaration of segmentation function
+// Segmentation into multiple words ("maximumtime" to "maximum time")
+void segment_word (const char* word);
 
 /**
  *
@@ -92,7 +97,7 @@ int AUTOCORR_check_word (const char* word)
         // Handle error cases
         if (index > 26 || index < 0)
             continue;
-        
+
         // Check for character in trie
         if (tmp -> next[index] == NULL)
             return -1;
@@ -106,7 +111,7 @@ int AUTOCORR_check_word (const char* word)
 
 /**
  *
- * Loads word frequency data from file into trie data structure. 
+ * Loads word frequency data from file into trie data structure.
  * Returns true if successful else false.
  *
  */
@@ -123,7 +128,7 @@ bool AUTOCORR_upload (void)
     if ((word_freq = calloc (1, sizeof (node))) == NULL)
     {
         printf ("Out of memory. Dictionary could not be loaded.\n");
-        return false;            
+        return false;
     }
     for (int i = 0; i < 27; i++)
         word_freq -> next[i] = NULL;
@@ -201,7 +206,7 @@ char* word_cor = NULL;
 /**
  *
  * Edit distance between two words: number of edits to turn one into the other.
- * Can be deletion (remove one letter), transposition (swap adjacent letters), 
+ * Can be deletion (remove one letter), transposition (swap adjacent letters),
  * alteration (change one letter to another) or insertion (add a letter)
  *
  * Finds words with edit distance = 1
@@ -226,7 +231,7 @@ char* AUTOCORR_correct_word (const char* word)
     if ((word_cor = calloc (AUTOCORR_LENGTH_MAX + 2, sizeof (char))) == NULL)
     {
         printf ("Out of memory. Autocorrect could not be run.\n");
-        return NULL; 
+        return NULL;
     }
 
     int word_cor_prob = 0;
@@ -263,7 +268,7 @@ char* AUTOCORR_correct_word (const char* word)
     for (int i = 0; i < word_len - 1; i++)
     {
         char tmp;
-        
+
         strcpy (word_edit_dist1, word);
 
         // Swap letters word[i] and word[i + 1]
@@ -308,7 +313,7 @@ char* AUTOCORR_correct_word (const char* word)
                 strcpy (word_cor, word_edit_dist1);
                 word_cor_prob = word_edit_dist1_prob;
             }
-        } 
+        }
     }
 
     /**
@@ -339,11 +344,96 @@ char* AUTOCORR_correct_word (const char* word)
         }
     }
 
-    // Handle empty strings - no replacement word found
+    /**
+     * Segmentation into multiple words ("maximumtime" to "maximum time")
+     * Inserts spaces into incorrect word using greedy maximum prefix algorithm
+     * To be tried only if no other alternate replacements found
+     */
     if (word_cor[0] == '\0')
-        return NULL;
+    {
+        // Prepare to check, segment word
+        free (word_cor);
+        word_cor = NULL;
+
+        // Intialize correct word string
+        // Add log (AUTOCORR_LENGTH_MAX) / log (2) space to word_cor for possible segmentation spaces
+        // Add space for segment correction
+        if ((word_cor = calloc (2 * AUTOCORR_LENGTH_MAX, sizeof (char))) == NULL)
+            printf ("Out of memory. Autocorrect could not be run.\n");
+
+        segment_word (word);
+
+        // Handle empty strings - no replacement word found
+        if (word_cor[0] == '\0')
+            return NULL;
+
+        // Remove leading space from segmented word
+        else
+            for (int j = 0; word_cor[j] != '\0'; j++)
+                word_cor[j] = word_cor[j + 1];
+    }
 
     return word_cor;
+}
+
+
+/**
+ *
+ * Segmentation into multiple words ("maximumtime" to "maximum time")
+ * Inserts spaces into incorrect word using greedy maximum prefix algorithm
+ * To be tried only if no other alternate replacements found
+ * Adds one leading whitespace to segmented word
+ *
+ */
+void segment_word (const char* word)
+{
+    int word_len = strlen (word);
+
+    char* word_seg_cor = NULL;
+    char* word_seg_rem = NULL;
+
+    // Check for largest prefix of the incorrect word string
+    // Only consider prefixes longer than/equal to length 2
+    for (int i = word_len - 1; i >= 2; i--)
+    {
+        bool prefix_match = false;
+
+        // Initialize word_seg_cor string
+        if ((word_seg_cor = calloc (i + 2, sizeof (char))) == NULL)
+            printf ("Out of memory. Autocorrect could not be run.\n");
+
+        // Initialize word_seg_rem string
+        if ((word_seg_rem = calloc (word_len - i, sizeof (char))) == NULL)
+            printf ("Out of memory. Autocorrect could not be run.\n");
+
+        // Create specified prefix of word to segment
+        for (int j = 0; j <= i; j++)
+            word_seg_cor[j] = word[j];
+        word_seg_cor[i + 1] = '\0';
+
+        // Keep remaining suffix string word_seg_rem
+        for (int j = i + 1; j < word_len; j++)
+            word_seg_rem[j - i - 1] = word[j];
+        word_seg_rem[word_len - i - 1] = '\0';
+
+        // Selected prefix is a correct word
+        if (AUTOCORR_check_word (word_seg_cor) > 0)
+        {
+            // Set end of loop flag
+            prefix_match = true;
+
+            strcat (word_cor, " ");
+            strcat (word_cor, word_seg_cor);
+            segment_word (word_seg_rem);
+        }
+
+        // Free memory
+        free (word_seg_rem);
+        free (word_seg_cor);
+
+        if (prefix_match == true)
+            break;
+    }
 }
 
 /**
