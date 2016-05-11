@@ -3,16 +3,18 @@ Autocorrect Library - probabilistic model based word spelling corrections. C lan
 
 ## Library Contents and Functions
 
-* `int AUTOCORR_LENGTH_MAX` - Stores maximum permitted word length that can be checked and corrected using the library.
-* `int AUTOCORR_check_word (const char* word)` - Checks if word is present in word data trie. Returns `word_frequency` if word is in present in trie, else returns `-1`.
-* `bool AUTOCORR_upload (void)` - Loads word frequency data from file into a Trie data structure. Returns true if successful else false. To be called only once before any other functions from the library can be used.
-* `char* AUTOCORR_correct_word (const char* word)` - Returns word with highest probability value as per words_hash_table as suggested correction for misspelled word. To be called for every misspelled word in file.
-* `int AUTOCORR_size_data (void)` - Returns size of word data file, that is, number of words in the frequency data file.
-* `void AUTOCORR_unload_words (void)` - Unloads word frequency data from memory. None of the above functions can be called once the file has been unloaded.
+* `int AUTOCORR_LENGTH_MAX` - Maximum permitted word length that can be checked and corrected using the library.
+* `int AUTOCORR_check_word (const char* word)` - Check if word is present in word data trie. Returns `word_frequency` if word is in present in trie, else returns `-1`.
+* `bool AUTOCORR_upload (void)` - Load word frequency data from file into a Trie data structure. Returns true if successful else false. To be called only once before any other functions from the library can be used.
+* `char* AUTOCORR_correct_word (const char* word)` - Return word with highest probability value as per words_hash_table as suggested correction for misspelled word. To be called for every misspelled word in file.
+* `int AUTOCORR_size_data (void)` - Return size of word data file, that is, number of words in the frequency data file.
+* `void AUTOCORR_unload_words (void)` - Unload word frequency data from memory. None of the above functions can be called once the file has been unloaded.
 
 ### Probability based Correction
 
 `char* AUTOCORR_correct_word (const char* word)` finds words with edit distance = 1 and returns word with highest probability value as per `word_data.txt` as suggested correction for the misspelled word.
+
+![Sample spell-check output](https://github.com/madhav-datt/spell-check/blob/master/resources/output.png)
 
 Edit distance between two words is defined as the number of edits to turn one into the other. Can be a deletion (remove one letter), a transposition (swap adjacent letters), an alteration (change one letter to another) or an insertion (add a letter).
 
@@ -22,13 +24,15 @@ If finding correct words within the acceptable edit distance value fails, `char*
 
 A greedy algorithm is used to select the longest correct word prefix of the the word being corrected. The algorithm is recursively run on the suffix till all the missing spaces have been added.
 
+![Sample spell-check segmentation output](https://github.com/madhav-datt/spell-check/blob/master/resources/seg_output.png)
+
 The last of the misspelled portion (no more spaces can be added to obtain correctly spelled words) is discarded.
 
 ## Using the library
 
 ### Downloading the library
 
-    $ wget https://github.com/madhav-datt/autocorrect-lib/archive/autocorrect-lib.v1.0.zip
+    $ wget ~/Downloads https://github.com/madhav-datt/autocorrect-lib/archive/autocorrect-lib.v1.0.zip
     $ unzip autocorrect-lib.v1.0.zip
     $ rm -f autocorrect-lib.v1.0.zip
 
